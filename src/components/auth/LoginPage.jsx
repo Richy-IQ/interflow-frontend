@@ -1,123 +1,154 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import useAuthStore from '../../store/authStore';
+import { ArrowRight } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import toast from 'react-hot-toast';
+import AuthSplitLayout from '@/components/layout/AuthSplitLayout';
+import FloatingInput from '@/components/common/FloatingInput';
+import useAuthStore from '@/store/authStore';
 import './Auth.css';
 
-const Logo = ({ white = false }) => (
-  <svg width="120" height="36" viewBox="0 0 120 36" fill="none">
-    <path d="M8 6 C8 6 14 2 18 8 C22 14 16 20 20 24 C24 28 28 26 28 26" stroke="#8B6914" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-    <path d="M4 14 C4 14 10 10 14 16 C18 22 12 26 16 30" stroke="#A07C1E" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-    <text x="36" y="24" fontFamily="Cormorant Garamond,serif" fontSize="20" fontWeight="700" fill={white ? '#FFFFFF' : '#1A1A1A'}>Interflow</text>
-    <text x="36" y="34" fontFamily="DM Sans,sans-serif" fontSize="8" fontWeight="400" fill={white ? 'rgba(255,255,255,0.5)' : '#888'} letterSpacing="0.15em">ARTIST'S EXCHANGE</text>
+/* ─── Brand ─────────────────────────────────────────────────────── */
+const GOLD      = '#8D5D1D';
+const GOLD_DARK = '#7A4E16';
+
+/* ─── SVG icons ─────────────────────────────────────────────────── */
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18">
+    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.56 2.684-3.875 2.684-6.615z"/>
+    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+    <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
   </svg>
 );
 
+const AppleIcon = () => (
+  <svg width="17" height="17" viewBox="0 0 814 1000" fill="#1A1A1A">
+    <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 436.7 1 279.2 1 116.5c0-95.3 33.7-184.4 94.4-251.2C143.7-192.7 215.8-226 289.7-226c105 0 168.4 70.9 225.7 70.9 55 0 127.1-74.4 240.5-74.4z"/>
+  </svg>
+);
+
+/* ─────────────────────────────────────────────────────────────────
+   Login Page
+   ───────────────────────────────────────────────────────────────── */
 const LoginPage = () => {
-  const [form, setForm] = useState({ email: '', password: '' });
-  const [showPwd, setShowPwd] = useState(false);
-  const [errors, setErrors] = useState({});
-  const { login, isLoading } = useAuthStore();
   const navigate = useNavigate();
+  const { login } = useAuthStore();
+  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm();
 
-  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+  const email    = watch('email',    '');
+  const password = watch('password', '');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErrors({});
-    if (!form.email) { setErrors({ email: 'Email is required' }); return; }
-    if (!form.password) { setErrors({ password: 'Password is required' }); return; }
+  const onSubmit = async (data) => {
     try {
-      const result = await login(form);
-      if (result.is_onboarded) {
-        navigate(result.role === 'artist' ? '/dashboard' : '/org/dashboard');
+      const res = await login(data);
+      if (!res.is_onboarded) {
+        navigate(res.role === 'artist' ? '/onboarding/artist' : '/onboarding/organization');
       } else {
-        navigate(result.role === 'artist' ? '/onboarding/artist' : '/onboarding/organization');
+        navigate(res.role === 'artist' ? '/dashboard' : '/org/dashboard');
       }
     } catch (err) {
-      const data = err.response?.data;
-      setErrors(data?.errors || { email: data?.message || 'Invalid credentials' });
+      toast.error(err?.response?.data?.message || 'Invalid credentials. Please try again.');
     }
   };
 
   return (
-    <div className="auth-page">
-      {/* Visual */}
-      <div className="auth-visual">
-        <div className="auth-visual-bg" />
-        <div className="auth-visual-content">
-          <div className="auth-visual-logo"><Logo white /></div>
-          <div className="auth-visual-tagline">Welcome<br /><span>Back</span></div>
-          <p className="auth-visual-sub">Sign in to continue building your creative journey on Interflow.</p>
-          <div className="auth-visual-artists">
-            {['🎤','🎹','🥁','🎭'].map((e,i) => (
-              <div className="auth-visual-img" key={i}>{e}</div>
-            ))}
-          </div>
+    <AuthSplitLayout
+      imageSrc="/assets/images/auth/login-bg.jpg"
+      imageAlt="Dancer"
+      leftWidth="52"
+    >
+      <div className="w-full max-w-[420px]">
+
+        {/* Heading */}
+        <h1
+          className="font-bold text-[#1A1A1A] mb-2"
+          style={{ fontFamily: 'Montserrat, sans-serif', fontSize: 'clamp(26px, 5vw, 34px)' }}
+        >
+          Sign In
+        </h1>
+
+        {/* Sub-line */}
+        <p className="text-[14px] text-[#888] mb-8">
+          Don't have an account?{' '}
+          <Link
+            to="/register"
+            className="font-semibold text-[#1A1A1A] hover:underline transition-opacity hover:opacity-70"
+          >
+            Sign Up
+          </Link>
+        </p>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <FloatingInput
+            label="Email"
+            type="email"
+            value={email}
+            error={errors.email?.message}
+            {...register('email', { required: 'Email is required' })}
+          />
+          <FloatingInput
+            label="Password"
+            type="password"
+            value={password}
+            error={errors.password?.message}
+            {...register('password', { required: 'Password is required' })}
+          />
+
+          {/* Continue button */}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full flex items-center justify-center gap-3 font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-60"
+            style={{
+              background: GOLD,
+              color: '#fff',
+              borderRadius: 9999,
+              height: 52,
+              paddingLeft: 28,
+              paddingRight: 14,
+              fontSize: 15,
+              fontFamily: 'Montserrat, sans-serif',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = GOLD_DARK}
+            onMouseLeave={e => e.currentTarget.style.background = GOLD}
+          >
+            {isSubmitting ? 'Signing in…' : 'Continue'}
+            {!isSubmitting && (
+              <span
+                className="flex items-center justify-center rounded-full shrink-0"
+                style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.22)' }}
+              >
+                <ArrowRight size={16} color="#fff" />
+              </span>
+            )}
+          </button>
+        </form>
+
+        {/* Forgot password */}
+        <Link
+          to="/forgot-password"
+          className="block text-[13.5px] font-semibold text-[#1A1A1A] mt-5 hover:underline transition-opacity hover:opacity-70"
+        >
+          Forgot your Password?
+        </Link>
+
+        {/* OR divider */}
+        <div className="or-divider my-6">OR</div>
+
+        {/* Social buttons */}
+        <div className="space-y-3">
+          <button className="social-btn">
+            <GoogleIcon /> Continue with Google
+          </button>
+          <button className="social-btn">
+            <AppleIcon /> Continue with Apple
+          </button>
         </div>
+
       </div>
-
-      {/* Form Panel */}
-      <div className="auth-panel">
-        <div className="auth-form-wrapper">
-          <div className="auth-logo-mobile"><Logo /></div>
-          <h1 className="auth-title">Sign In</h1>
-          <p className="auth-subtitle">
-            Don't have an account? <Link to="/register">Sign Up</Link>
-          </p>
-
-          <form className="auth-form" onSubmit={handleSubmit}>
-            <div className="form-group">
-              <input
-                className={`form-input ${errors.email ? 'error' : ''}`}
-                type="email"
-                placeholder="Email"
-                value={form.email}
-                onChange={set('email')}
-                autoComplete="email"
-              />
-              {errors.email && <span className="form-error">{errors.email}</span>}
-            </div>
-
-            <div className="form-group">
-              <div className="auth-input-wrapper">
-                <input
-                  className={`form-input ${errors.password ? 'error' : ''}`}
-                  type={showPwd ? 'text' : 'password'}
-                  placeholder="Password"
-                  value={form.password}
-                  onChange={set('password')}
-                  autoComplete="current-password"
-                />
-                <span className="auth-eye-btn" onClick={() => setShowPwd(p => !p)}>
-                  {showPwd ? '🙈' : '👁'}
-                </span>
-              </div>
-              {errors.password && <span className="form-error">{errors.password}</span>}
-            </div>
-
-            <div className="auth-forgot">
-              <span onClick={() => navigate('/forgot-password')}>Forgot your Password?</span>
-            </div>
-
-            <button className="btn btn-primary auth-btn" type="submit" disabled={isLoading}>
-              {isLoading ? <span className="spinner" /> : 'Continue →'}
-            </button>
-
-            <div className="divider auth-divider">OR</div>
-
-            <button type="button" className="auth-social-btn">
-              <svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-              Continue with Google
-            </button>
-
-            <button type="button" className="auth-social-btn">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-              Continue with Apple
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
+    </AuthSplitLayout>
   );
 };
 

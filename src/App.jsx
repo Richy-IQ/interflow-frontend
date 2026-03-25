@@ -1,28 +1,30 @@
 import React, { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import useAuthStore from './store/authStore';
+import useAuthStore from '@/store/authStore';
 
-import LandingPage from './components/landing/LandingPage';
-import LoginPage from './components/auth/LoginPage';
-import RegisterPage from './components/auth/RegisterPage';
-import ForgotPasswordPage from './components/auth/ForgotPasswordPage';
+import LandingPage        from '@/components/landing/LandingPage';
+import LoginPage          from '@/components/auth/LoginPage';
+import RegisterPage       from '@/components/auth/RegisterPage';
+import ForgotPasswordPage from '@/components/auth/ForgotPasswordPage';
+import MailSentPage       from '@/components/auth/MailSentPage';
+import AccountCreatedPage from '@/components/auth/AccountCreatedPage';
 
-const ArtistOnboarding     = lazy(() => import('./pages/ArtistOnboarding'));
-const OrgOnboarding        = lazy(() => import('./pages/OrgOnboarding'));
-const ArtistDashboard      = lazy(() => import('./pages/ArtistDashboard'));
-const OrgDashboard         = lazy(() => import('./pages/OrgDashboard'));
-const PortfolioPage        = lazy(() => import('./pages/PortfolioPage'));
-const NetworkPage          = lazy(() => import('./pages/NetworkPage'));
-const OpportunitiesPage    = lazy(() => import('./pages/OpportunitiesPage'));
-const ApplicationsPage     = lazy(() => import('./pages/ApplicationsPage'));
-const NotificationsPage    = lazy(() => import('./pages/NotificationsPage'));
-const SettingsPage         = lazy(() => import('./pages/SettingsPage'));
-const SupportPage          = lazy(() => import('./pages/SupportPage'));
-const SharePortfolioPage   = lazy(() => import('./pages/SharePortfolioPage'));
-const OrgOpportunitiesPage = lazy(() => import('./pages/OrgOpportunitiesPage'));
-const OrgApplicationsPage  = lazy(() => import('./pages/OrgApplicationsPage'));
-const PublicPortfolioPage  = lazy(() => import('./pages/PublicPortfolioPage'));
+const ArtistOnboarding     = lazy(() => import('@/pages/ArtistOnboarding'));
+const OrgOnboarding        = lazy(() => import('@/pages/OrgOnboarding'));
+const ArtistDashboard      = lazy(() => import('@/pages/ArtistDashboard'));
+const OrgDashboard         = lazy(() => import('@/pages/OrgDashboard'));
+const PortfolioPage        = lazy(() => import('@/pages/PortfolioPage'));
+const NetworkPage          = lazy(() => import('@/pages/NetworkPage'));
+const OpportunitiesPage    = lazy(() => import('@/pages/OpportunitiesPage'));
+const ApplicationsPage     = lazy(() => import('@/pages/ApplicationsPage'));
+const NotificationsPage    = lazy(() => import('@/pages/NotificationsPage'));
+const SettingsPage         = lazy(() => import('@/pages/SettingsPage'));
+const SupportPage          = lazy(() => import('@/pages/SupportPage'));
+const SharePortfolioPage   = lazy(() => import('@/pages/SharePortfolioPage'));
+const OrgOpportunitiesPage = lazy(() => import('@/pages/OrgOpportunitiesPage'));
+const OrgApplicationsPage  = lazy(() => import('@/pages/OrgApplicationsPage'));
+const PublicPortfolioPage  = lazy(() => import('@/pages/PublicPortfolioPage'));
 
 const PrivateRoute = ({ children }) => {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
@@ -39,9 +41,9 @@ const PublicRoute = ({ children }) => {
 };
 
 const PageLoader = () => (
-  <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--dark)', flexDirection:'column', gap:'16px' }}>
-    <div style={{ width:'44px', height:'44px', border:'3px solid rgba(139,105,20,0.2)', borderTopColor:'var(--gold)', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />
-    <div style={{ fontFamily:'var(--font-display)', fontSize:'16px', color:'rgba(255,255,255,0.3)' }}>Loading…</div>
+  <div className="min-h-screen flex flex-col items-center justify-center bg-[#0D0D0D] gap-4">
+    <div style={{ width:44, height:44, border:'3px solid rgba(139,105,20,0.2)', borderTopColor:'#8B6914', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />
+    <p style={{ fontFamily:'Cormorant Garamond, serif', fontSize:16, color:'rgba(255,255,255,0.3)' }}>Loading…</p>
   </div>
 );
 
@@ -59,6 +61,8 @@ function App() {
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/forgot-password/sent" element={<MailSentPage />} />
+          <Route path="/register/success" element={<PrivateRoute><AccountCreatedPage /></PrivateRoute>} />
           <Route path="/onboarding/artist" element={<PrivateRoute><ArtistOnboarding /></PrivateRoute>} />
           <Route path="/onboarding/organization" element={<PrivateRoute><OrgOnboarding /></PrivateRoute>} />
           <Route path="/dashboard" element={<PrivateRoute><ArtistDashboard /></PrivateRoute>} />

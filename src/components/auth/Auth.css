@@ -1,303 +1,103 @@
-/* ─── Auth Layout ────────────────────────────────────────────────── */
-.auth-page {
+/* Auth pages – custom CSS (Tailwind handles most styles) */
+
+/* ── Responsive split panel ── */
+/* Left panel is full-width on mobile, then switches to the
+   configured percentage (stored as CSS var) at md breakpoint   */
+.auth-left-panel {
+  width: 100%;
   min-height: 100vh;
+}
+@media (min-width: 768px) {
+  .auth-left-panel {
+    width: var(--auth-left-width, 50%);
+    min-height: 0;
+  }
+}
+
+/* ── Collage grid for role picker ── */
+.collage-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(3, 1fr);
+  gap: 10px;
+  height: 100%;
+  padding: 10px;
 }
-.auth-visual {
-  background: var(--dark);
-  position: relative;
+.collage-cell {
+  border-radius: 16px;
   overflow: hidden;
+  background: #1a1a1a;
+}
+.collage-cell img { width: 100%; height: 100%; object-fit: cover; }
+.collage-cell.gold { background: #8D5D1D; }
+
+/* ── Social auth buttons ── */
+.social-btn {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 20px;
+  border: 1.5px solid #E2E2E2;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  background: white;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
-.auth-visual-bg {
+.social-btn:hover { background: #F7F7F7; border-color: #CCCCCC; }
+
+/* ── OR divider ── */
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #AAAAAA;
+  font-size: 13px;
+}
+.or-divider::before,
+.or-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #E5E5E5;
+}
+
+/* ── Email confirm page ── */
+.confirm-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.confirm-bg-img {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse at 30% 40%, rgba(139,105,20,0.18) 0%, transparent 55%),
-    radial-gradient(ellipse at 70% 70%, rgba(139,105,20,0.10) 0%, transparent 55%);
-}
-.auth-visual-content {
-  position: relative;
-  z-index: 1;
-  text-align: center;
-  padding: 48px;
-}
-.auth-visual-logo { margin-bottom: 40px; display: flex; justify-content: center; }
-.auth-visual-tagline {
-  font-family: var(--font-display);
-  font-size: 36px;
-  font-weight: 700;
-  color: var(--white);
-  line-height: 1.2;
-  margin-bottom: 16px;
-}
-.auth-visual-tagline span { color: var(--gold); }
-.auth-visual-sub {
-  font-size: 15px;
-  color: rgba(255,255,255,0.5);
-  line-height: 1.7;
-  max-width: 380px;
-  margin: 0 auto;
-}
-.auth-visual-artists {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 48px;
-  max-width: 340px;
-  margin-left: auto;
-  margin-right: auto;
-}
-.auth-visual-img {
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  aspect-ratio: 1;
-  background: rgba(255,255,255,0.05);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 48px;
-}
-.auth-panel {
-  background: var(--white);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 40px;
-  overflow-y: auto;
-}
-.auth-form-wrapper {
   width: 100%;
-  max-width: 420px;
-  animation: scaleIn 0.4s ease;
+  height: 100%;
+  object-fit: cover;
 }
-.auth-logo-mobile { display: none; margin-bottom: 32px; }
-.auth-title { font-family: var(--font-display); font-size: 36px; font-weight: 700; color: var(--dark); margin-bottom: 8px; }
-.auth-subtitle { font-size: 15px; color: var(--text-muted); margin-bottom: 36px; }
-.auth-subtitle a { color: var(--gold); font-weight: 500; }
-.auth-subtitle a:hover { text-decoration: underline; }
-.auth-form { display: flex; flex-direction: column; gap: 20px; }
-.auth-input-wrapper { position: relative; }
-.auth-input-icon {
+.confirm-overlay {
   position: absolute;
-  left: 14px; top: 50%;
-  transform: translateY(-50%);
-  color: var(--grey-3);
-  font-size: 16px;
-  pointer-events: none;
+  inset: 0;
+  background: rgba(0,0,0,0.58);
 }
-.auth-input-icon + .form-input { padding-left: 42px; }
-.auth-eye-btn {
-  position: absolute;
-  right: 14px; top: 50%;
-  transform: translateY(-50%);
-  color: var(--grey-3);
-  cursor: pointer;
-  font-size: 16px;
-  transition: color var(--transition);
-}
-.auth-eye-btn:hover { color: var(--text-primary); }
-.auth-terms {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-.auth-terms input { width: 16px; height: 16px; margin-top: 2px; accent-color: var(--gold); flex-shrink: 0; cursor: pointer; }
-.auth-terms a { color: var(--gold); }
-.auth-btn { width: 100%; }
-.auth-divider { margin: 4px 0; }
-.auth-social-btn {
+.confirm-card {
+  position: relative;
+  z-index: 10;
+  background: white;
+  border-radius: 22px;
+  padding: 40px 28px;
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 12px 20px;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-full);
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-primary);
-  background: var(--white);
-  cursor: pointer;
-  transition: all var(--transition);
-  font-family: var(--font-body);
-}
-.auth-social-btn:hover { border-color: var(--grey-3); background: var(--grey-1); }
-.auth-social-btn img { width: 20px; height: 20px; }
-.auth-forgot { text-align: right; font-size: 13px; color: var(--gold); font-weight: 500; cursor: pointer; }
-.auth-forgot:hover { text-decoration: underline; }
-
-/* ─── Role Selection ─────────────────────────────────────────────── */
-.role-select-page {
-  min-height: 100vh;
-  background: var(--dark);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 24px;
-  position: relative;
-  overflow: hidden;
-}
-.role-select-bg {
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse at center, rgba(139,105,20,0.1) 0%, transparent 65%);
-}
-.role-select-inner {
-  position: relative;
-  z-index: 1;
+  max-width: 490px;
   text-align: center;
-  max-width: 620px;
-  width: 100%;
-  animation: scaleIn 0.4s ease;
+  box-shadow: 0 28px 60px rgba(0,0,0,0.32);
+  margin: 20px;
 }
-.role-select-logo { display: flex; justify-content: center; margin-bottom: 40px; }
-.role-select-title {
-  font-family: var(--font-display);
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--white);
-  margin-bottom: 8px;
-}
-.role-select-sub { font-size: 15px; color: rgba(255,255,255,0.5); margin-bottom: 12px; }
-.role-select-question { font-size: 16px; color: rgba(255,255,255,0.7); margin-bottom: 32px; font-weight: 500; }
-.role-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.role-card {
-  background: rgba(255,255,255,0.04);
-  border: 1.5px solid rgba(255,255,255,0.08);
-  border-radius: var(--radius-lg);
-  padding: 32px 24px;
-  cursor: pointer;
-  transition: all var(--transition);
-  text-align: left;
-  position: relative;
-  overflow: hidden;
-}
-.role-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: var(--gold);
-  transform: scaleX(0);
-  transition: transform var(--transition);
-}
-.role-card:hover { border-color: rgba(139,105,20,0.4); background: rgba(139,105,20,0.06); }
-.role-card:hover::before { transform: scaleX(1); }
-.role-card.selected { border-color: var(--gold); background: rgba(139,105,20,0.10); }
-.role-card.selected::before { transform: scaleX(1); }
-.role-card-img {
-  width: 56px; height: 56px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.08);
-  margin-bottom: 16px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 28px;
-  float: right;
-}
-.role-card h3 { font-size: 18px; font-weight: 600; color: var(--white); margin-bottom: 8px; }
-.role-card p { font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.6; margin-bottom: 16px; }
-.role-card-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: var(--gold);
-  color: var(--white);
-  border-radius: var(--radius-full);
-  font-size: 13px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-body);
-  transition: all var(--transition);
-}
-.role-card-btn:hover { background: var(--gold-light); }
-
-/* ─── OTP Verification ───────────────────────────────────────────── */
-.otp-wrapper {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin: 8px 0;
-}
-.otp-input-box {
-  width: 56px; height: 64px;
-  border: 2px solid var(--border);
-  border-radius: var(--radius-md);
-  font-size: 24px;
-  font-weight: 700;
-  text-align: center;
-  color: var(--dark);
-  background: var(--white);
-  transition: all var(--transition);
-  outline: none;
-}
-.otp-input-box:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(139,105,20,0.12); }
-.otp-resend { text-align: center; font-size: 13px; color: var(--text-muted); }
-.otp-resend span { color: var(--gold); cursor: pointer; font-weight: 500; }
-.otp-resend span:hover { text-decoration: underline; }
-.otp-mail-icon {
-  width: 72px; height: 72px;
-  border-radius: 50%;
-  background: var(--gold-pale);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 32px;
-  margin: 0 auto 24px;
-}
-
-/* ─── Congratulations ────────────────────────────────────────────── */
-.congrats-page {
-  min-height: 100vh;
-  background: var(--dark);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-.congrats-bg {
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse at center, rgba(139,105,20,0.12) 0%, transparent 65%);
-}
-.congrats-inner {
-  position: relative; z-index: 1;
-  text-align: center;
-  padding: 48px 24px;
-  max-width: 480px;
-  animation: scaleIn 0.5s ease;
-}
-.congrats-check {
-  width: 80px; height: 80px;
-  border-radius: 50%;
-  background: var(--success);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 36px;
-  margin: 0 auto 28px;
-  box-shadow: 0 0 0 12px rgba(34,197,94,0.12);
-}
-.congrats-title { font-family: var(--font-display); font-size: 36px; font-weight: 700; color: var(--white); margin-bottom: 16px; }
-.congrats-sub { font-size: 15px; color: rgba(255,255,255,0.5); line-height: 1.7; margin-bottom: 36px; }
-
-/* ─── Loading Spinner ────────────────────────────────────────────── */
-.spinner {
-  width: 20px; height: 20px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: var(--white);
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-  display: inline-block;
-}
-
-/* ─── Responsive ─────────────────────────────────────────────────── */
-@media (max-width: 900px) {
-  .auth-page { grid-template-columns: 1fr; }
-  .auth-visual { display: none; }
-  .auth-logo-mobile { display: flex; justify-content: center; }
-  .role-cards { grid-template-columns: 1fr; }
+@media (min-width: 480px) {
+  .confirm-card { padding: 48px 44px; }
 }

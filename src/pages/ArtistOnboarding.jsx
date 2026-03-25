@@ -1,343 +1,499 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { artistAPI, connectionsAPI } from '../services/api';
+import { useDropzone } from 'react-dropzone';
+import { ArrowRight, Image, Play, UserPlus, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
-import '../components/onboarding/Onboarding.css';
+import OnboardingLayout from '@/components/layout/OnboardingLayout';
+import FloatingInput from '@/components/common/FloatingInput';
+import FloatingSelect from '@/components/common/FloatingSelect';
+import { artistAPI, connectionsAPI } from '@/services/index';
 
-const Logo = () => (
-  <svg width="110" height="32" viewBox="0 0 120 36" fill="none">
-    <path d="M8 6 C8 6 14 2 18 8 C22 14 16 20 20 24 C24 28 28 26 28 26" stroke="#8B6914" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-    <path d="M4 14 C4 14 10 10 14 16 C18 22 12 26 16 30" stroke="#A07C1E" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-    <text x="36" y="24" fontFamily="Cormorant Garamond,serif" fontSize="20" fontWeight="700" fill="#FFFFFF">Interflow</text>
-    <text x="36" y="33" fontFamily="DM Sans,sans-serif" fontSize="7.5" fill="rgba(255,255,255,0.4)" letterSpacing="0.15em">ARTIST'S EXCHANGE</text>
-  </svg>
+/* ─── Shared button ── */
+const GoldBtn = ({ children, onClick, disabled, type = 'button', outline = false, className = '' }) => (
+  <button
+    type={type}
+    onClick={onClick}
+    disabled={disabled}
+    className={`inline-flex items-center gap-2 px-7 py-3 rounded-full text-[14px] font-semibold transition-all disabled:opacity-55 ${
+      outline
+        ? 'border-2 border-[#8B6914] text-[#8B6914] hover:bg-[#8B6914]/8 bg-white'
+        : 'bg-[#8B6914] text-white hover:bg-[#7A5C12]'
+    } ${className}`}
+  >
+    {children}
+  </button>
 );
 
-const STEPS = [
-  { num: 1, label: 'Personal Details' },
-  { num: 2, label: 'Proficiency Scale' },
-  { num: 3, label: 'Customize Portfolio' },
-  { num: 4, label: 'Previous Experience' },
-  { num: 5, label: 'Make Connections' },
+const LOCATION_OPTIONS = [
+  'Lagos, Nigeria','Abuja, Nigeria','Port Harcourt, Nigeria','Accra, Ghana',
+  'Nairobi, Kenya','Cairo, Egypt','Johannesburg, South Africa','Douala, Cameroon',
+].map(v => ({ value: v, label: v }));
+
+const PRONOUN_OPTIONS = [
+  { value: 'He/Him', label: 'He/Him' },
+  { value: 'She/Her', label: 'She/Her' },
+  { value: 'They/Them', label: 'They/Them' },
+  { value: 'Prefer not to say', label: 'Prefer not to say' },
 ];
 
-const DISCIPLINES = [
-  { value: 'poet_spoken_word', label: 'Poet / Spoken Word Artist' },
-  { value: 'dancer', label: 'Dancer' },
-  { value: 'musician', label: 'Musician' },
-  { value: 'singer_vocalist', label: 'Singer / Vocalist' },
-  { value: 'theatre_performer', label: 'Theatre Performer / Actor' },
-  { value: 'performance_artist', label: 'Performance Artist' },
-  { value: 'storyteller', label: 'Storyteller' },
-  { value: 'multidisciplinary', label: 'Multidisciplinary Performer' },
-];
-const CAREER_STAGES = ['student','emerging','early_career','mid_career','established','independent'];
-const PRONOUNS = ['he_him','she_her','they_them','other'];
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const YEARS = Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - i);
+const DISCIPLINE_OPTIONS = [
+  'Voice','Vocals','Guitar','Piano','Drums','Bass','Violin','Dance',
+  'Ballet','Hip-hop','Afrobeats','Theatre','Acting','Directing','Choreography',
+].map(v => ({ value: v.toLowerCase(), label: v }));
 
-const StepSidebar = ({ current }) => (
-  <div className="onboard-sidebar">
-    <div className="onboard-sidebar-logo"><Logo /></div>
-    <div className="onboard-steps">
-      {STEPS.map(s => (
-        <div key={s.num} className={`onboard-step ${s.num === current ? 'active' : s.num < current ? 'done' : ''}`}>
-          <div className="onboard-step-num">{s.num < current ? '✓' : s.num}</div>
-          <div className="onboard-step-info">
-            <div className="onboard-step-label">{s.label}</div>
-          </div>
+const ROLE_OPTIONS = [
+  'Singer','Dancer','Musician','Actor','Director','Choreographer',
+  'Performer','Composer','Songwriter','Producer',
+].map(v => ({ value: v.toLowerCase(), label: v }));
+
+const INDUSTRY_OPTIONS = [
+  'Music','Film','Theatre','Dance','Visual Arts','Fashion',
+  'Television','Radio','Digital Media','Event Production',
+].map(v => ({ value: v.toLowerCase(), label: v }));
+
+const MONTHS = ['January','February','March','April','May','June',
+  'July','August','September','October','November','December']
+  .map((m,i) => ({ value: String(i+1).padStart(2,'0'), label: m }));
+
+const YEARS = Array.from({ length: 40 }, (_, i) => {
+  const y = new Date().getFullYear() - i;
+  return { value: String(y), label: String(y) };
+});
+
+/* ════════════════════════════════════════════════════════════════ */
+/*  STEP 1 – Personal Details                                      */
+/* ════════════════════════════════════════════════════════════════ */
+const Step1 = ({ onNext }) => {
+  const [form, setForm] = useState({
+    firstName: '', lastName: '', location: '', pronoun: '',
+    instrument: '', professionalRole: '', jobTitle: '', industry: '', specialSkills: '',
+  });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleNext = async () => {
+    if (!form.firstName || !form.lastName) { toast.error('First and last name required'); return; }
+    try {
+      await artistAPI.step1({
+        first_name: form.firstName, last_name: form.lastName,
+        location: form.location, pronouns: form.pronoun,
+        instrument_voice_type: form.instrument,
+        professional_role: form.professionalRole,
+        job_title: form.jobTitle,
+        industry: form.industry,
+        special_skills: form.specialSkills,
+      });
+      onNext();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to save details');
+    }
+  };
+
+  return (
+    <>
+      <h2 className="text-[28px] font-bold text-[#1A1A1A] mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
+        Welcome!, Get Started with Your Portfolio
+      </h2>
+      <p className="text-[13.5px] text-[#888] mb-8 leading-relaxed">
+        Start by providing key details about yourself to build a strong and credible portfolio
+      </p>
+
+      <div className="bg-white rounded-2xl border border-[#EBEBEB] p-8 space-y-5">
+        {/* Name row */}
+        <div className="grid grid-cols-2 gap-4">
+          <FloatingInput label="First name*" value={form.firstName} onChange={e => set('firstName', e.target.value)} />
+          <FloatingInput label="Last name*"  value={form.lastName}  onChange={e => set('lastName',  e.target.value)} />
         </div>
+        <div className="grid grid-cols-2 gap-4">
+          <FloatingSelect label="Location"         value={form.location} options={LOCATION_OPTIONS} onChange={e => set('location', e.target.value)} />
+          <FloatingSelect label="Preferred pronoun" value={form.pronoun}  options={PRONOUN_OPTIONS}  onChange={e => set('pronoun',  e.target.value)} />
+        </div>
+
+        <p className="text-[14px] font-semibold text-[#1A1A1A] pt-1">What do you do in the Industry?</p>
+        <FloatingSelect label="Instrument/ Voice Type" value={form.instrument}       options={DISCIPLINE_OPTIONS} onChange={e => set('instrument',       e.target.value)} />
+        <FloatingSelect label="Professional Role"      value={form.professionalRole} options={ROLE_OPTIONS}       onChange={e => set('professionalRole', e.target.value)} />
+        <FloatingSelect label="Job title"              value={form.jobTitle}         options={ROLE_OPTIONS}       onChange={e => set('jobTitle',         e.target.value)} />
+
+        <p className="text-[14px] font-semibold text-[#1A1A1A] pt-1">What Industry do you work in most often?</p>
+        <FloatingSelect label="Industries"     value={form.industry}      options={INDUSTRY_OPTIONS}  onChange={e => set('industry',      e.target.value)} />
+        <FloatingSelect label="Special skills" value={form.specialSkills} options={DISCIPLINE_OPTIONS} onChange={e => set('specialSkills', e.target.value)} />
+
+        <div className="flex justify-center pt-2">
+          <GoldBtn onClick={handleNext}>Next <ArrowRight size={15} /></GoldBtn>
+        </div>
+      </div>
+    </>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════════ */
+/*  STEP 2 – Proficiency Scale                                     */
+/* ════════════════════════════════════════════════════════════════ */
+const RatingRow = ({ skill, value, onChange }) => (
+  <div className="flex items-center gap-6">
+    <div className="w-[120px] bg-[#F0EDE6] rounded-full px-4 py-2 text-[13.5px] font-medium text-[#5C4A1E] text-center shrink-0">
+      {skill}
+    </div>
+    <div className="flex gap-3">
+      {[1,2,3,4,5].map(n => (
+        <button
+          key={n}
+          onClick={() => onChange(n)}
+          className={`w-10 h-10 rounded-full text-[14px] font-semibold border-2 transition-all ${
+            value === n
+              ? 'bg-[#8B6914] border-[#8B6914] text-white'
+              : 'border-[#C8A870] text-[#C8A870] hover:border-[#8B6914] hover:text-[#8B6914]'
+          }`}
+        >
+          {n}
+        </button>
       ))}
     </div>
   </div>
 );
 
-const Step1 = ({ onNext }) => {
-  const [form, setForm] = useState({ first_name:'', last_name:'', country:'', city:'', willing_to_travel:false, pronoun:'', professional_role:'', job_title:'', career_stage:'', primary_discipline:'', current_focus:'', bio:'' });
-  const [disciplineOptions, setDisciplineOptions] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const set = k => e => setForm(f => ({ ...f, [k]: e.target ? e.target.value : e }));
+const Step2 = ({ onNext }) => {
+  const [skills, setSkills] = useState({ Drums: 0, Dance: 0, Performance: 0 });
+  const set = (k, v) => setSkills(s => ({ ...s, [k]: v }));
 
-  useEffect(() => {
-    if (form.primary_discipline) {
-      artistAPI.getDisciplineOptions(form.primary_discipline).then(r => setDisciplineOptions(r.data.data)).catch(() => {});
-    }
-  }, [form.primary_discipline]);
-
-  const handleSubmit = async () => {
-    if (!form.first_name || !form.last_name) { toast.error('Name is required'); return; }
-    setLoading(true);
-    try { await artistAPI.step1(form); toast.success('Details saved!'); onNext({ discipline: form.primary_discipline, disciplineOptions }); }
-    catch (e) { toast.error(e.response?.data?.message || 'Failed to save'); }
-    finally { setLoading(false); }
-  };
-
-  return (
-    <div className="onboard-form-section">
-      <h2 className="onboard-title">Welcome, Get Started with Your Portfolio</h2>
-      <p className="onboard-sub">Start by providing key details about yourself to build a strong and incredible portfolio</p>
-      <div className="onboard-field-grid">
-        <div className="form-group"><label className="form-label">First Name *</label><input className="form-input" placeholder="First" value={form.first_name} onChange={set('first_name')} /></div>
-        <div className="form-group"><label className="form-label">Last Name *</label><input className="form-input" placeholder="Last" value={form.last_name} onChange={set('last_name')} /></div>
-        <div className="form-group"><label className="form-label">Country</label><input className="form-input" placeholder="e.g. Nigeria" value={form.country} onChange={set('country')} /></div>
-        <div className="form-group"><label className="form-label">City</label><input className="form-input" placeholder="e.g. Lagos" value={form.city} onChange={set('city')} /></div>
-        <div className="form-group">
-          <label className="form-label">Primary Discipline</label>
-          <select className="form-input form-select" value={form.primary_discipline} onChange={set('primary_discipline')}>
-            <option value="">Select discipline</option>
-            {DISCIPLINES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-          </select>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Career Stage</label>
-          <select className="form-input form-select" value={form.career_stage} onChange={set('career_stage')}>
-            <option value="">Select stage</option>
-            {CAREER_STAGES.map(s => <option key={s} value={s}>{s.replace(/_/g,' ')}</option>)}
-          </select>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Pronoun</label>
-          <select className="form-input form-select" value={form.pronoun} onChange={set('pronoun')}>
-            <option value="">Select</option>
-            {PRONOUNS.map(p => <option key={p} value={p}>{p.replace('_','/')}</option>)}
-          </select>
-        </div>
-        <div className="form-group"><label className="form-label">Job Title</label><input className="form-input" placeholder="e.g. Contemporary Dancer" value={form.job_title} onChange={set('job_title')} /></div>
-        {disciplineOptions && (
-          <div className="form-group">
-            <label className="form-label">Professional Role</label>
-            <select className="form-input form-select" value={form.professional_role} onChange={set('professional_role')}>
-              <option value="">Select role</option>
-              {disciplineOptions.roles?.map(r => <option key={r} value={r}>{r.replace(/_/g,' ')}</option>)}
-            </select>
-          </div>
-        )}
-        <div className="form-group" style={{ gridColumn:'1/-1' }}>
-          <label className="form-label">Bio</label>
-          <textarea className="form-input" rows="3" placeholder="Tell us about yourself..." value={form.bio} onChange={set('bio')} style={{ resize:'vertical' }} />
-        </div>
-        <div className="form-group" style={{ gridColumn:'1/-1' }}>
-          <label style={{ display:'flex', alignItems:'center', gap:'8px', cursor:'pointer', fontSize:'14px', color:'var(--text-secondary)' }}>
-            <input type="checkbox" checked={form.willing_to_travel} onChange={e => setForm(f=>({...f,willing_to_travel:e.target.checked}))} style={{ accentColor:'var(--gold)' }} />
-            Willing to travel
-          </label>
-        </div>
-      </div>
-      <div className="onboard-actions">
-        <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>{loading ? <span className="spinner"/> : 'Next →'}</button>
-      </div>
-    </div>
-  );
-};
-
-const Step2 = ({ onNext, onBack }) => {
-  const skills = ['Drums','Dance','Performance','Vocals','Songwriting','Choreography','Stage Presence'];
-  const [ratings, setRatings] = useState(() => Object.fromEntries(skills.map(s=>[s,3])));
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async () => {
-    setLoading(true);
+  const handleNext = async () => {
     try {
-      await artistAPI.step2({ ratings: Object.fromEntries(Object.entries(ratings).map(([k,v])=>[k.toLowerCase().replace(' ','_'),v])) });
-      toast.success('Proficiency saved!'); onNext();
-    } catch { toast.error('Failed to save'); } finally { setLoading(false); }
+      const payload = Object.entries(skills).map(([skill, level]) => ({ skill, level }));
+      await artistAPI.step2({ proficiency: payload });
+      onNext();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to save proficiency');
+    }
   };
 
   return (
-    <div className="onboard-form-section">
-      <h2 className="onboard-title">What is your professional proficiency in these areas?</h2>
-      <p className="onboard-sub">On the scale below, number one indicates an amateur level while five indicates that you offer this skill at the highest professional level</p>
-      <div className="proficiency-list">
-        {Object.entries(ratings).map(([skill, rating]) => (
-          <div key={skill} className="proficiency-row">
-            <div className="proficiency-label">{skill}</div>
-            <div className="proficiency-stars">
-              {[1,2,3,4,5].map(n => (
-                <button key={n} className={`proficiency-star ${n<=rating?'active':''}`} onClick={()=>setRatings(r=>({...r,[skill]:n}))}>{n}</button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="onboard-actions">
-        <button className="btn btn-outline" onClick={onBack}>← Back</button>
-        <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>{loading?<span className="spinner"/>:'Next →'}</button>
-      </div>
-    </div>
-  );
-};
+    <>
+      <h2 className="text-[28px] font-bold text-[#1A1A1A] mb-1 text-center" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
+        What is your professional proficiency in these areas?
+      </h2>
+      <p className="text-[13.5px] text-[#888] mb-8 text-center leading-relaxed max-w-[520px] mx-auto">
+        On the scale below, number one indicates an amateur skill level while five indicates that you offer the skill at the highest professional level.
+      </p>
 
-const Step3 = ({ onNext, onBack }) => {
-  const [uploading, setUploading] = useState(null);
-  const mediaTypes = [
-    { key:'video', label:'+ Add videos', icon:'🎬', accept:'video/*' },
-    { key:'photo', label:'+ Add Pictures', icon:'🖼', accept:'image/*' },
-    { key:'audio', label:'+ Add Audio files', icon:'🎵', accept:'audio/*' },
-    { key:'project', label:'+ Add Projects', icon:'📁', accept:'*/*' },
-  ];
-
-  const handleUpload = async (e, mediaType) => {
-    const file = e.target.files[0]; if (!file) return;
-    setUploading(mediaType);
-    const fd = new FormData(); fd.append('file',file); fd.append('media_type',mediaType); fd.append('title',file.name);
-    try { await artistAPI.uploadMedia(fd); toast.success(`${mediaType} uploaded!`); }
-    catch { toast.error('Upload failed'); } finally { setUploading(null); }
-  };
-
-  return (
-    <div className="onboard-form-section">
-      <h2 className="onboard-title">Customize your Profile.</h2>
-      <p className="onboard-sub">Go ahead and add your favourite profile photo and showcase media. You'll be able to crop it to fit perfectly on your profile page</p>
-      <div className="media-section">
-        <div className="media-section-label">📸 Upload Photo</div>
-        <p style={{ fontSize:'13px', color:'var(--text-muted)', marginBottom:'16px' }}>Add your profile photos here. You'll be able to crop it to fit perfectly on your profile page</p>
-        <div className="media-upload-grid">
-          {mediaTypes.map(m => (
-            <label key={m.key} className="media-upload-card">
-              <input type="file" accept={m.accept} style={{ display:'none' }} onChange={e=>handleUpload(e,m.key)} />
-              <div className="media-upload-icon">{uploading===m.key ? '⏳' : m.icon}</div>
-              <div className="media-upload-label">{uploading===m.key ? 'Uploading...' : m.label}</div>
-            </label>
+      <div className="bg-white rounded-2xl border border-[#EBEBEB] p-10">
+        <div className="space-y-6">
+          {Object.entries(skills).map(([skill, val]) => (
+            <RatingRow key={skill} skill={skill} value={val} onChange={v => set(skill, v)} />
           ))}
         </div>
+        <div className="flex justify-center mt-10">
+          <GoldBtn onClick={handleNext}>Next <ArrowRight size={15} /></GoldBtn>
+        </div>
       </div>
-      <div className="onboard-actions">
-        <button className="btn btn-outline" onClick={onBack}>← Back</button>
-        <button className="btn btn-primary" onClick={onNext}>Next →</button>
-        <button className="btn btn-ghost" style={{ color:'var(--text-muted)' }} onClick={onNext}>Help</button>
-      </div>
-    </div>
+    </>
   );
 };
 
-const Step4 = ({ onNext, onBack }) => {
-  const [expType, setExpType] = useState('career');
-  const [form, setForm] = useState({ organization:'', role_title:'', production:'', is_current:false, degree_or_program:'', field_of_study:'', start_month:'', start_year:'', end_month:'', end_year:'' });
-  const [loading, setLoading] = useState(false);
-  const [saved, setSaved] = useState([]);
-  const set = k => e => setForm(f=>({...f,[k]:e.target.value}));
-
-  const handleSave = async () => {
-    setLoading(true);
-    try {
-      await artistAPI.addExperience({ experience_type:expType, ...form });
-      toast.success('Experience added!');
-      setSaved(s=>[...s, form]);
-      setForm({ organization:'',role_title:'',production:'',is_current:false,degree_or_program:'',field_of_study:'',start_month:'',start_year:'',end_month:'',end_year:'' });
-    } catch { toast.error('Failed to save'); } finally { setLoading(false); }
-  };
-
+/* ════════════════════════════════════════════════════════════════ */
+/*  STEP 3 – Customize Portfolio                                   */
+/* ════════════════════════════════════════════════════════════════ */
+const UploadCard = ({ icon: Icon, title, desc, onDrop, preview }) => {
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple: false });
   return (
-    <div className="onboard-form-section">
-      <h2 className="onboard-title">Where have you previously worked and learned?</h2>
-      <p className="onboard-sub">Input previous educational institutions, sessions and artist and training programs and discuss where you performed</p>
-      <div className="exp-type-tabs">
-        <label className="exp-tab-label"><input type="radio" name="expType" checked={expType==='career'} onChange={()=>setExpType('career')} style={{accentColor:'var(--gold)'}} /> Career Highlights</label>
-        <label className="exp-tab-label"><input type="radio" name="expType" checked={expType==='education'} onChange={()=>setExpType('education')} style={{accentColor:'var(--gold)'}} /> Education</label>
+    <div
+      {...getRootProps()}
+      className={`flex items-center gap-5 p-5 rounded-xl border-2 cursor-pointer transition-all ${
+        isDragActive ? 'border-[#8B6914] bg-[#8B6914]/5' : 'border-[#E8E4DC] bg-[#FAFAF7] hover:border-[#8B6914]/40'
+      }`}
+    >
+      <input {...getInputProps()} />
+      <div className="w-[90px] h-[72px] rounded-xl bg-[#EBEBEB] flex items-center justify-center shrink-0 overflow-hidden">
+        {preview
+          ? <img src={preview} alt="" className="w-full h-full object-cover rounded-xl" />
+          : <Icon size={28} strokeWidth={1.4} className="text-[#AAAAAA]" />
+        }
       </div>
-      <div className="onboard-field-grid">
-        {expType==='career' ? <>
-          <div className="form-group" style={{gridColumn:'1/-1'}}><label className="form-label">Organization Name</label><input className="form-input" placeholder="Enter text here" value={form.organization} onChange={set('organization')} /></div>
-          <div className="form-group" style={{gridColumn:'1/-1'}}><label className="form-label">Role, Title, Position or Program Name</label><input className="form-input" placeholder="Enter text here" value={form.role_title} onChange={set('role_title')} /></div>
-          <div className="form-group" style={{gridColumn:'1/-1'}}><label className="form-label">Production, Show or Work</label><input className="form-input" placeholder="Enter text here" value={form.production} onChange={set('production')} /></div>
-          <div className="form-group" style={{gridColumn:'1/-1'}}>
-            <label style={{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',fontSize:'14px',color:'var(--text-secondary)'}}>
-              <input type="checkbox" checked={form.is_current} onChange={e=>setForm(f=>({...f,is_current:e.target.checked}))} style={{accentColor:'var(--gold)'}} />
-              I am currently affiliated with this organization
-            </label>
-          </div>
-        </> : <>
-          <div className="form-group" style={{gridColumn:'1/-1'}}><label className="form-label">Degree or Program</label><input className="form-input" placeholder="e.g. Bachelor of Arts" value={form.degree_or_program} onChange={set('degree_or_program')} /></div>
-          <div className="form-group" style={{gridColumn:'1/-1'}}><label className="form-label">Field of Study</label><input className="form-input" placeholder="e.g. Performing Arts" value={form.field_of_study} onChange={set('field_of_study')} /></div>
-        </>}
-        <div className="form-group"><label className="form-label">Start Month</label><select className="form-input form-select" value={form.start_month} onChange={set('start_month')}><option value="">Select</option>{MONTHS.map((m,i)=><option key={m} value={i+1}>{m}</option>)}</select></div>
-        <div className="form-group"><label className="form-label">Start Year</label><select className="form-input form-select" value={form.start_year} onChange={set('start_year')}><option value="">Select</option>{YEARS.map(y=><option key={y} value={y}>{y}</option>)}</select></div>
-        {!form.is_current && <>
-          <div className="form-group"><label className="form-label">End Month</label><select className="form-input form-select" value={form.end_month} onChange={set('end_month')}><option value="">Select</option>{MONTHS.map((m,i)=><option key={m} value={i+1}>{m}</option>)}</select></div>
-          <div className="form-group"><label className="form-label">End Year</label><select className="form-input form-select" value={form.end_year} onChange={set('end_year')}><option value="">Select</option>{YEARS.map(y=><option key={y} value={y}>{y}</option>)}</select></div>
-        </>}
-      </div>
-      {saved.length > 0 && <div className="exp-saved-list">{saved.map((s,i)=><div key={i} className="exp-saved-item">✓ {s.organization||s.degree_or_program}</div>)}</div>}
-      <div className="onboard-actions">
-        <button className="btn btn-outline" onClick={onBack}>← Back</button>
-        <button className="btn btn-outline" onClick={handleSave} disabled={loading}>{loading?<span className="spinner"/>:'+ Add'}</button>
-        <button className="btn btn-primary" onClick={onNext}>Next →</button>
-        <button className="btn btn-ghost" style={{color:'var(--text-muted)'}} onClick={onNext}>Skip</button>
+      <div>
+        <p className="text-[14.5px] font-semibold text-[#1A1A1A]">{title}</p>
+        <p className="text-[12.5px] text-[#888] leading-snug mt-0.5">{desc}</p>
       </div>
     </div>
   );
 };
 
-const Step5 = ({ onFinish, onBack }) => {
-  const [users, setUsers] = useState([]);
-  const [connected, setConnected] = useState(new Set());
-  const [loading, setLoading] = useState(true);
+const Step3 = ({ onNext, onSkip }) => {
+  const [avatar,  setAvatar]  = useState(null);
+  const [avatarPrev, setAvatarPrev] = useState(null);
+  const [media,   setMedia]   = useState(null);
 
-  useEffect(() => {
-    connectionsAPI.discover().then(r=>setUsers(r.data.data||[])).catch(()=>{}).finally(()=>setLoading(false));
+  const onAvatarDrop  = useCallback(files => {
+    if (files[0]) { setAvatar(files[0]); setAvatarPrev(URL.createObjectURL(files[0])); }
   }, []);
+  const onMediaDrop = useCallback(files => { if (files[0]) setMedia(files[0]); }, []);
 
-  const handleConnect = async (id) => {
-    try { await connectionsAPI.send({ receiver_id:id }); setConnected(s=>new Set([...s,id])); toast.success('Request sent!'); }
-    catch { toast.error('Could not send request'); }
-  };
-
-  const handleFinish = async () => {
-    try { await artistAPI.completeOnboarding(); } catch {}
-    onFinish();
+  const handleNext = async () => {
+    try {
+      if (avatar) {
+        const fd = new FormData(); fd.append('avatar', avatar);
+        await artistAPI.uploadAvatar(fd);
+      }
+      if (media) {
+        const fd = new FormData(); fd.append('file', media);
+        await artistAPI.uploadMedia(fd);
+      }
+      onNext();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Upload failed');
+    }
   };
 
   return (
-    <div className="onboard-form-section">
-      <h2 className="onboard-title">Great! Let's start building your network</h2>
-      <p className="onboard-sub">Connect with artists and organizations to grow your creative community</p>
-      {loading ? <div style={{textAlign:'center',padding:'40px',color:'var(--text-muted)'}}>Loading suggestions...</div> : (
-        <div className="connections-grid">
-          {users.slice(0,6).map(u => {
-            const name = u.display_name||u.email; const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-            return (
-              <div key={u.id} className="connection-card">
-                <div className="connection-avatar">{initials}</div>
-                <div className="connection-name">{name}</div>
-                <div className="connection-role">{u.role}</div>
-                <button className={`btn btn-sm ${connected.has(u.id)?'btn-outline':'btn-primary'}`} onClick={()=>!connected.has(u.id)&&handleConnect(u.id)} disabled={connected.has(u.id)}>
-                  {connected.has(u.id)?'✓ Sent':'+ Connect'}
+    <>
+      <h2 className="text-[28px] font-bold text-[#1A1A1A] mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
+        Customize your Profile.
+      </h2>
+      <p className="text-[13.5px] text-[#888] mb-8 leading-relaxed">
+        Make some design choices by customizing your profile to your preference.
+      </p>
+
+      <div className="bg-white rounded-2xl border border-[#EBEBEB] p-8 space-y-4">
+        <UploadCard
+          icon={Image}
+          title="Upload Photo"
+          desc="Go ahead, add your favourite photo. You'll be able to crop it perfectly on your profile later."
+          onDrop={onAvatarDrop}
+          preview={avatarPrev}
+        />
+        <UploadCard
+          icon={Play}
+          title="Showcase Media"
+          desc="Add video, audio, and creative projects to your profile here."
+          onDrop={onMediaDrop}
+        />
+
+        <div className="flex items-center gap-4 pt-2">
+          <GoldBtn onClick={handleNext} className="flex-1 justify-center">Next <ArrowRight size={15} /></GoldBtn>
+          <GoldBtn onClick={onSkip} outline className="flex-1 justify-center">Skip</GoldBtn>
+        </div>
+      </div>
+    </>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════════ */
+/*  STEP 4 – Previous Experience                                   */
+/* ════════════════════════════════════════════════════════════════ */
+const Step4 = ({ onNext, onSkip }) => {
+  const [type, setType]    = useState('career'); // 'career' | 'education'
+  const [current, setCurrent] = useState(false);
+  const [form, setForm]    = useState({
+    org: '', role: '', production: '', degree: '', fieldOfStudy: '',
+    startMonth: '', startYear: '', endMonth: '', endYear: '',
+  });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleNext = async () => {
+    try {
+      const payload = {
+        organization: form.org,
+        type,
+        is_current: current,
+        start_month: form.startMonth,
+        start_year:  form.startYear,
+        end_month:   current ? '' : form.endMonth,
+        end_year:    current ? '' : form.endYear,
+        ...(type === 'career'
+          ? { role_title: form.role, production_show: form.production }
+          : { degree_program: form.degree, field_of_study: form.fieldOfStudy }),
+      };
+      await artistAPI.addExperience(payload);
+      onNext();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to save experience');
+    }
+  };
+
+  const RadioBtn = ({ value, label }) => (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <div
+        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
+          type === value ? 'border-[#22C55E]' : 'border-[#CCCCCC]'
+        }`}
+        onClick={() => setType(value)}
+      >
+        {type === value && <div className="w-2 h-2 rounded-full bg-[#22C55E]" />}
+      </div>
+      <span className="text-[13.5px] font-medium text-[#333]">{label}</span>
+    </label>
+  );
+
+  return (
+    <>
+      <h2 className="text-[28px] font-bold text-[#1A1A1A] mb-1" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
+        Where have you previously worked and learned?
+      </h2>
+      <p className="text-[13.5px] text-[#888] mb-8 text-center leading-relaxed max-w-[520px] mx-auto">
+        Workplace, educational Institutions, resident and artist and training programs and houses where you performed.
+      </p>
+
+      <div className="bg-white rounded-2xl border border-[#EBEBEB] p-8 space-y-4">
+        <FloatingInput
+          label={type === 'career' ? 'Organization*' : 'Educational Institution*'}
+          value={form.org}
+          onChange={e => set('org', e.target.value)}
+        />
+
+        {/* Toggle */}
+        <div className="flex items-center gap-8">
+          <RadioBtn value="career"    label="Career Highlights" />
+          <RadioBtn value="education" label="Education" />
+        </div>
+
+        {type === 'career' ? (
+          <>
+            <FloatingInput label="Role, Title, Position or Program Name*" value={form.role}       onChange={e => set('role',       e.target.value)} />
+            <FloatingInput label="Production, Show or Work"               value={form.production} onChange={e => set('production', e.target.value)} />
+          </>
+        ) : (
+          <>
+            <FloatingInput label="Degree or Program"  value={form.degree}       onChange={e => set('degree',       e.target.value)} />
+            <FloatingInput label="Field of Study"     value={form.fieldOfStudy} onChange={e => set('fieldOfStudy', e.target.value)} />
+          </>
+        )}
+
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={current}
+            onChange={e => setCurrent(e.target.checked)}
+            className="w-4 h-4 rounded accent-[#8B6914]"
+          />
+          <span className="text-[13.5px] text-[#555]">I am currently affiliated with this organization</span>
+        </label>
+
+        {/* Dates */}
+        <div className="grid grid-cols-2 gap-4">
+          <FloatingSelect label="Start month" value={form.startMonth} options={MONTHS} onChange={e => set('startMonth', e.target.value)} />
+          <FloatingSelect label="Start year"  value={form.startYear}  options={YEARS}  onChange={e => set('startYear',  e.target.value)} />
+        </div>
+        {!current && (
+          <div className="grid grid-cols-2 gap-4">
+            <FloatingSelect label="End month" value={form.endMonth} options={MONTHS} onChange={e => set('endMonth', e.target.value)} />
+            <FloatingSelect label="End year"  value={form.endYear}  options={YEARS}  onChange={e => set('endYear',  e.target.value)} />
+          </div>
+        )}
+
+        <div className="flex items-center gap-4 pt-2">
+          <GoldBtn onClick={handleNext} className="flex-1 justify-center">Next <ArrowRight size={15} /></GoldBtn>
+          <GoldBtn onClick={onSkip} outline className="flex-1 justify-center">Skip</GoldBtn>
+        </div>
+      </div>
+    </>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════════ */
+/*  STEP 5 – Make Connections                                      */
+/* ════════════════════════════════════════════════════════════════ */
+const MOCK_CONNECTIONS = [
+  { id:1, name:'Reuben Hamilton', roles:'Voice, Dancer, Stage Performer, Actor', genres:['Opera','Dance Theatre'], img:'/assets/images/onboarding/connect-1.jpg' },
+  { id:2, name:'Karim Anderson',  roles:'Voice, Dancer, Stage Performer, Actor', genres:['Opera','Dance Theatre'], img:'/assets/images/onboarding/connect-2.jpg' },
+  { id:3, name:'Aderoju Peter',   roles:'Voice, Dancer, Stage Performer, Actor', genres:['Opera','Dance Theatre'], img:'/assets/images/onboarding/connect-3.jpg' },
+  { id:4, name:'Mercy Adekanye',  roles:'Voice, Dancer, Stage Performer, Actor', genres:['Opera','Dance Theatre'], img:'/assets/images/onboarding/connect-4.jpg' },
+  { id:5, name:'Deborah Kim',     roles:'Voice, Dancer, Stage Performer, Actor', genres:['Opera','Dance Theatre'], img:'/assets/images/onboarding/connect-5.jpg' },
+  { id:6, name:'Peter Kingston',  roles:'Voice, Flutist, Stage Performer, Actor',genres:['Opera','Dance Theatre'], img:'/assets/images/onboarding/connect-6.jpg' },
+];
+
+const Step5 = ({ onNext, onSkip }) => {
+  const [sent, setSent] = useState(new Set());
+
+  const toggle = async (id) => {
+    if (sent.has(id)) return;
+    try {
+      await connectionsAPI.send({ to_user: id });
+      setSent(s => new Set([...s, id]));
+    } catch {
+      // optimistically mark sent anyway
+      setSent(s => new Set([...s, id]));
+    }
+  };
+
+  return (
+    <>
+      <h2 className="text-[28px] font-bold text-[#1A1A1A] mb-1 text-center" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
+        Great! Let's start building your network
+      </h2>
+      <p className="text-[13.5px] text-[#888] mb-8 text-center">
+        Select connections from the list to get started.
+      </p>
+
+      <div className="bg-white rounded-2xl border border-[#EBEBEB] p-8">
+        <div className="grid grid-cols-3 gap-4">
+          {MOCK_CONNECTIONS.map(c => (
+            <div key={c.id} className="rounded-xl border border-[#EBEBEB] overflow-hidden hover:shadow-md transition-shadow">
+              {/* Photo */}
+              <div className="relative h-[140px] bg-[#1a1a1a]">
+                <img src={c.img} alt={c.name} className="w-full h-full object-cover"
+                  onError={e => { e.currentTarget.style.display='none'; }} />
+                <button
+                  onClick={() => toggle(c.id)}
+                  className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                    sent.has(c.id)
+                      ? 'bg-[#8B6914] text-white'
+                      : 'bg-white/90 text-[#8B6914] hover:bg-[#8B6914] hover:text-white'
+                  }`}
+                >
+                  {sent.has(c.id) ? <Check size={14} /> : <UserPlus size={14} />}
                 </button>
               </div>
-            );
-          })}
+              {/* Info */}
+              <div className="p-3">
+                <p className="text-[13.5px] font-semibold text-[#1A1A1A] mb-0.5">{c.name}</p>
+                <p className="text-[11.5px] text-[#888] mb-2 leading-snug">{c.roles}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {c.genres.map(g => (
+                    <span key={g} className="text-[11px] px-2.5 py-0.5 bg-[#F5EDD6] text-[#8B6914] rounded-full">{g}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-      )}
-      <div className="onboard-actions">
-        <button className="btn btn-outline" onClick={onBack}>← Back</button>
-        <button className="btn btn-primary" onClick={handleFinish}>Finish →</button>
-        <button className="btn btn-ghost" style={{color:'var(--text-muted)'}} onClick={handleFinish}>Skip</button>
+
+        <div className="flex items-center gap-4 pt-6">
+          <GoldBtn onClick={onNext} className="flex-1 justify-center">Next <ArrowRight size={15} /></GoldBtn>
+          <GoldBtn onClick={onSkip} outline className="flex-1 justify-center">Skip</GoldBtn>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
+/* ════════════════════════════════════════════════════════════════ */
+/*  Main ArtistOnboarding                                          */
+/* ════════════════════════════════════════════════════════════════ */
 const ArtistOnboarding = () => {
   const [step, setStep] = useState(1);
-  const [stepData, setStepData] = useState({});
-  const navigate = useNavigate();
-  const next = (data={}) => { setStepData(s=>({...s,...data})); setStep(s=>s+1); };
-  const back = () => setStep(s=>s-1);
-  const finish = () => navigate('/dashboard');
+  const navigate        = useNavigate();
+
+  const next = () => setStep(s => s + 1);
+  const skip = () => setStep(s => s + 1);
+
+  const finish = async () => {
+    try {
+      await artistAPI.completeOnboarding();
+      navigate('/dashboard');
+    } catch {
+      navigate('/dashboard');
+    }
+  };
+
+  const STEPS = {
+    1: <Step1 onNext={next} />,
+    2: <Step2 onNext={next} />,
+    3: <Step3 onNext={next} onSkip={skip} />,
+    4: <Step4 onNext={next} onSkip={skip} />,
+    5: <Step5 onNext={finish} onSkip={finish} />,
+  };
 
   return (
-    <div className="onboard-page">
-      <StepSidebar current={step} />
-      <div className="onboard-main">
-        <div className="onboard-card">
-          {step===1 && <Step1 onNext={next} />}
-          {step===2 && <Step2 onNext={next} onBack={back} />}
-          {step===3 && <Step3 onNext={next} onBack={back} />}
-          {step===4 && <Step4 onNext={next} onBack={back} />}
-          {step===5 && <Step5 onFinish={finish} onBack={back} />}
-        </div>
-      </div>
-    </div>
+    <OnboardingLayout currentStep={step}>
+      {STEPS[step]}
+    </OnboardingLayout>
   );
 };
 

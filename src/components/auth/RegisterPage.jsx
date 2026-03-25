@@ -1,376 +1,436 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { authAPI } from '../../services/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, Mail } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import toast from 'react-hot-toast';
+import AuthSplitLayout from '@/components/layout/AuthSplitLayout';
+import FloatingInput from '@/components/common/FloatingInput';
+import { authAPI } from '@/services/index';
 import './Auth.css';
 
-const Logo = ({ white = false }) => (
-  <svg width="120" height="36" viewBox="0 0 120 36" fill="none">
-    <path d="M8 6 C8 6 14 2 18 8 C22 14 16 20 20 24 C24 28 28 26 28 26" stroke="#8B6914" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-    <path d="M4 14 C4 14 10 10 14 16 C18 22 12 26 16 30" stroke="#A07C1E" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-    <text x="36" y="24" fontFamily="Cormorant Garamond,serif" fontSize="20" fontWeight="700" fill={white ? '#FFFFFF' : '#1A1A1A'}>Interflow</text>
-    <text x="36" y="34" fontFamily="DM Sans,sans-serif" fontSize="8" fontWeight="400" fill={white ? 'rgba(255,255,255,0.5)' : '#888'} letterSpacing="0.15em">ARTIST'S EXCHANGE</text>
+/* ─── Brand ─────────────────────────────────────────────────────── */
+const GOLD      = '#8D5D1D';
+const GOLD_DARK = '#7A4E16';
+const BLUE      = '#0197F6';
+
+/* ─── SVG icons ─────────────────────────────────────────────────── */
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18">
+    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.56 2.684-3.875 2.684-6.615z"/>
+    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+    <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
+    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
   </svg>
 );
 
-// ─── Step 1: Role Selection ───────────────────────────────────────
-const RoleSelect = ({ onSelect }) => {
-  const [selected, setSelected] = useState(null);
+const AppleIcon = () => (
+  <svg width="17" height="17" viewBox="0 0 814 1000" fill="#1A1A1A">
+    <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 436.7 1 279.2 1 116.5c0-95.3 33.7-184.4 94.4-251.2C143.7-192.7 215.8-226 289.7-226c105 0 168.4 70.9 225.7 70.9 55 0 127.1-74.4 240.5-74.4z"/>
+  </svg>
+);
 
-  const roles = [
-    {
-      key: 'artist',
-      icon: '🎤',
-      title: 'As an Artist',
-      desc: "Build your personalized portfolio and find your next best opportunity with Interflow",
-    },
-    {
-      key: 'organization',
-      icon: '🏢',
-      title: 'As an Organization',
-      desc: "Build your personalized profile and find your next best opportunity with Interflow",
-    },
-  ];
+/* ─── Top breadcrumb bar ─────────────────────────────────────────── */
+const PageTopBar = ({ title }) => (
+  <div
+    className="w-full flex items-center shrink-0"
+    style={{ background: '#2E2E2E', height: 38, paddingLeft: 22 }}
+  >
+    <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, fontFamily: 'Montserrat, sans-serif' }}>
+      {title}
+    </span>
+  </div>
+);
 
-  return (
-    <div className="role-select-page">
-      <div className="role-select-bg" />
-      <div className="role-select-inner">
-        <div className="role-select-logo"><Logo white /></div>
-        <h2 className="role-select-title">Welcome!</h2>
-        <p className="role-select-sub">Build your artist portfolio, connect with opportunities and organize events.</p>
-        <p className="role-select-question">How would you like to use Interflow?</p>
-        <div className="role-cards">
-          {roles.map((r) => (
-            <div
-              key={r.key}
-              className={`role-card ${selected === r.key ? 'selected' : ''}`}
-              onClick={() => setSelected(r.key)}
-            >
-              <div className="role-card-img">{r.icon}</div>
-              <h3>{r.title}</h3>
-              <p>{r.desc}</p>
-              <button className="role-card-btn" onClick={(e) => { e.stopPropagation(); onSelect(r.key); }}>
-                Continue →
-              </button>
+/* ─── Gold "Continue →" pill button ─────────────────────────────── */
+const ContinueBtn = ({ type = 'button', onClick, loading = false, fullWidth = false, small = false }) => (
+  <button
+    type={type}
+    onClick={onClick}
+    disabled={loading}
+    className={`flex items-center justify-center gap-3 font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-60 ${fullWidth ? 'w-full' : ''}`}
+    style={{
+      background: GOLD,
+      color: '#fff',
+      borderRadius: 9999,
+      height: small ? 42 : 52,
+      paddingLeft: small ? 20 : 28,
+      paddingRight: small ? 12 : 14,
+      fontSize: small ? 13 : 15,
+      fontFamily: 'Montserrat, sans-serif',
+    }}
+  >
+    {loading ? 'Please wait…' : 'Continue'}
+    <span
+      className="flex items-center justify-center rounded-full shrink-0"
+      style={{ width: small ? 26 : 32, height: small ? 26 : 32, background: 'rgba(255,255,255,0.22)' }}
+    >
+      <ArrowRight size={small ? 13 : 16} color="#fff" />
+    </span>
+  </button>
+);
+
+/* ─── Collage images ─────────────────────────────────────────────── */
+const COLLAGE = [
+  '/assets/images/auth/collage-1.jpg',
+  '/assets/images/auth/collage-2.jpg',
+  '/assets/images/auth/collage-3.jpg',
+  null,   /* gold tile */
+  '/assets/images/auth/collage-4.jpg',
+  '/assets/images/auth/collage-5.jpg',
+];
+
+/* ─────────────────────────────────────────────────────────────────
+   Step 1 — Role Picker
+   ───────────────────────────────────────────────────────────────── */
+const ROLES = [
+  {
+    role: 'artist',
+    label: 'As an Artist',
+    desc: 'Build your personalized portfolio and find your next best opportunity with Interflow',
+    img: '/assets/images/auth/role-artist.jpg',
+  },
+  {
+    role: 'organization',
+    label: 'As an Organization',
+    desc: 'Build your personalized portfolio and find your next best opportunity with Interflow',
+    img: '/assets/images/auth/role-org.jpg',
+  },
+];
+
+const RolePicker = ({ onSelect }) => (
+  <div className="min-h-screen flex flex-col">
+    <div className="flex flex-1">
+      {/* ── Left: photo collage ── */}
+      <div className="hidden md:block bg-[#0D0D0D]" style={{ width: '55%' }}>
+        <div className="collage-grid h-full">
+          {COLLAGE.map((src, i) => (
+            <div key={i} className={`collage-cell ${!src ? 'gold' : ''}`}>
+              {src && (
+                <img
+                  src={src}
+                  alt=""
+                  onError={e => {
+                    e.currentTarget.parentElement.style.background = '#1a1a1a';
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              )}
             </div>
           ))}
         </div>
       </div>
-    </div>
-  );
-};
 
-// ─── Step 2: Sign Up Form ─────────────────────────────────────────
-const SignUpForm = ({ role, onSuccess }) => {
-  const [form, setForm] = useState({ email: '', password: '', confirm_password: '', agreed: false });
-  const [showPwd, setShowPwd] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+      {/* ── Right: role selection ── */}
+      <div className="relative flex-1 bg-white flex flex-col justify-center px-6 sm:px-10 md:px-14 py-10 overflow-y-auto">
 
-  const validate = () => {
-    const e = {};
-    if (!form.email) e.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email';
-    if (!form.password) e.password = 'Password is required';
-    else if (form.password.length < 8) e.password = 'Min 8 characters';
-    else if (!/[A-Z]/.test(form.password)) e.password = 'Must contain an uppercase letter';
-    else if (!/[0-9]/.test(form.password)) e.password = 'Must contain a number';
-    if (form.password !== form.confirm_password) e.confirm_password = 'Passwords do not match';
-    if (!form.agreed) e.agreed = 'Please agree to Terms of Service';
-    return e;
-  };
+        {/* Decorative arcs – top-right */}
+        <div className="pointer-events-none absolute top-0 right-0 overflow-hidden" style={{ width: 220, height: 220 }}>
+          <div className="absolute" style={{ top: -80, right: -80, width: 260, height: 260, border: '1px solid #E8E0D0', borderRadius: '50%' }} />
+          <div className="absolute" style={{ top: -50, right: -50, width: 200, height: 200, border: '1px solid #EDE8DF', borderRadius: '50%' }} />
+          <div className="absolute" style={{ top: -20, right: -20, width: 140, height: 140, border: '1px solid #F2EDE5', borderRadius: '50%' }} />
+        </div>
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-    setLoading(true);
-    try {
-      await authAPI.register({ email: form.email, password: form.password, confirm_password: form.confirm_password, role });
-      onSuccess(form.email);
-    } catch (err) {
-      const data = err.response?.data;
-      setErrors(data?.errors || { email: data?.message || 'Registration failed' });
-    } finally {
-      setLoading(false);
-    }
-  };
+        <div className="relative z-10 w-full max-w-[420px]">
+          {/* Logo */}
+          <img
+            src="/assets/icons/interflow-logo.svg"
+            alt="Interflow"
+            style={{ height: 56, width: 'auto', marginBottom: 36 }}
+          />
 
-  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+          <h1
+            className="font-bold text-[#1A1A1A] mb-2"
+            style={{ fontFamily: 'Montserrat, sans-serif', fontSize: 'clamp(24px, 4vw, 32px)' }}
+          >
+            Welcome!
+          </h1>
+          <p className="text-[14px] text-[#888] mb-8 leading-relaxed">
+            Build your artist portfolio, connect with opportunities and organize events.
+          </p>
 
-  return (
-    <div className="auth-page">
-      {/* Visual */}
-      <div className="auth-visual">
-        <div className="auth-visual-bg" />
-        <div className="auth-visual-content">
-          <div className="auth-visual-logo"><Logo white /></div>
-          <div className="auth-visual-tagline">Join Africa's<br /><span>Creative Exchange</span></div>
-          <p className="auth-visual-sub">Thousands of artists and organizations already building their future on Interflow.</p>
-          <div className="auth-visual-artists">
-            {['🎭','🎵','💃','🎸'].map((e,i) => (
-              <div className="auth-visual-img" key={i}>{e}</div>
+          <p
+            className="font-bold text-[#1A1A1A] mb-5"
+            style={{ fontFamily: 'Montserrat, sans-serif', fontSize: 15 }}
+          >
+            How would you like to use Interflow?
+          </p>
+
+          {/* Role cards */}
+          <div className="flex flex-col gap-4">
+            {ROLES.map(({ role, label, desc, img }) => (
+              <div
+                key={role}
+                className="flex items-center gap-4 p-5 rounded-2xl cursor-pointer transition-all hover:shadow-md group"
+                style={{
+                  background: '#F5F0E8',
+                  borderLeft: `5px solid ${GOLD}`,
+                }}
+                onClick={() => onSelect(role)}
+              >
+                {/* Text + button */}
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="font-bold text-[#1A1A1A] mb-1"
+                    style={{ fontFamily: 'Montserrat, sans-serif', fontSize: 15 }}
+                  >
+                    {label}
+                  </p>
+                  <p className="text-[12.5px] text-[#888] leading-snug mb-4">{desc}</p>
+                  <ContinueBtn small onClick={e => { e.stopPropagation(); onSelect(role); }} />
+                </div>
+
+                {/* Avatar with blue ring */}
+                <div
+                  className="shrink-0 rounded-full overflow-hidden"
+                  style={{
+                    width: 80,
+                    height: 80,
+                    border: `3px solid ${BLUE}`,
+                    boxShadow: `0 0 0 2px #fff, 0 0 0 5px ${BLUE}`,
+                  }}
+                >
+                  <img
+                    src={img}
+                    alt={label}
+                    className="w-full h-full object-cover"
+                    onError={e => {
+                      e.currentTarget.parentElement.style.background = GOLD;
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+              </div>
             ))}
           </div>
         </div>
       </div>
+    </div>
+  </div>
+);
 
-      {/* Form Panel */}
-      <div className="auth-panel">
-        <div className="auth-form-wrapper">
-          <div className="auth-logo-mobile"><Logo /></div>
-          <h1 className="auth-title">Sign Up</h1>
-          <p className="auth-subtitle">
-            Already have an account? <Link to="/login">Sign in</Link>
+/* ─────────────────────────────────────────────────────────────────
+   Step 2 — Registration form
+   ───────────────────────────────────────────────────────────────── */
+const RegisterForm = ({ role, onSuccess }) => {
+  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm();
+  const email           = watch('email', '');
+  const password        = watch('password', '');
+  const confirmPassword = watch('confirmPassword', '');
+
+  const onSubmit = async (data) => {
+    if (data.password !== data.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    try {
+      await authAPI.register({ email: data.email, password: data.password, role });
+      onSuccess(data.email);
+    } catch (err) {
+      const msg = err?.response?.data?.email?.[0]
+        || err?.response?.data?.message
+        || 'Registration failed';
+      toast.error(msg);
+    }
+  };
+
+  const BG = role === 'artist'
+    ? '/assets/images/auth/register-artist-bg.jpg'
+    : '/assets/images/auth/register-org-bg.jpg';
+
+  const roleLabel = role === 'artist' ? 'Artist' : 'Organization';
+
+  return (
+    <AuthSplitLayout
+      imageSrc={BG}
+      imageAlt={`${roleLabel} background`}
+      leftWidth="50"
+    >
+      <div className="w-full max-w-[420px]">
+        <h1
+          className="font-bold text-[#1A1A1A] mb-2"
+          style={{ fontFamily: 'Montserrat, sans-serif', fontSize: 'clamp(26px, 5vw, 34px)' }}
+        >
+          Sign Up
+        </h1>
+        <p className="text-[14px] text-[#888] mb-8">
+          Already have an account?{' '}
+          <Link
+            to="/login"
+            className="font-semibold underline hover:opacity-80 transition-opacity"
+            style={{ color: '#1A1A1A' }}
+          >
+            Sign in
+          </Link>
+        </p>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <FloatingInput
+            label="Email"
+            type="email"
+            value={email}
+            error={errors.email?.message}
+            {...register('email', { required: 'Email is required' })}
+          />
+          <FloatingInput
+            label="Password"
+            type="password"
+            value={password}
+            error={errors.password?.message}
+            {...register('password', {
+              required: 'Password is required',
+              minLength: { value: 8, message: 'At least 8 characters' },
+            })}
+          />
+          <FloatingInput
+            label="Confirm Password"
+            type="password"
+            value={confirmPassword}
+            error={errors.confirmPassword?.message}
+            {...register('confirmPassword', { required: 'Please confirm your password' })}
+          />
+
+          <p className="text-[11.5px] leading-relaxed" style={{ color: '#AAAAAA' }}>
+            Passwords must be at least 8 characters and contain at least one uppercase
+            letter and one number
           </p>
 
-          <form className="auth-form" onSubmit={handleSubmit}>
-            <div className="form-group">
-              <div className="auth-input-wrapper">
-                <span className="auth-input-icon">✉</span>
-                <input
-                  className={`form-input ${errors.email ? 'error' : ''}`}
-                  type="email"
-                  placeholder="Email"
-                  value={form.email}
-                  onChange={set('email')}
-                />
-              </div>
-              {errors.email && <span className="form-error">{errors.email}</span>}
-            </div>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              className="w-4 h-4 rounded cursor-pointer"
+              style={{ accentColor: GOLD }}
+              {...register('terms', { required: 'Please agree to the terms' })}
+            />
+            <span className="text-[13px] text-[#555]">
+              Agree to our{' '}
+              <a href="#" className="underline text-[#1A1A1A] hover:opacity-70">Terms of Service</a>
+              {' '}and{' '}
+              <a href="#" className="underline text-[#1A1A1A] hover:opacity-70">Privacy Policy</a>
+            </span>
+          </label>
+          {errors.terms && <p className="text-xs text-red-500">{errors.terms.message}</p>}
 
-            <div className="form-group">
-              <div className="auth-input-wrapper">
-                <input
-                  className={`form-input ${errors.password ? 'error' : ''}`}
-                  type={showPwd ? 'text' : 'password'}
-                  placeholder="Password"
-                  value={form.password}
-                  onChange={set('password')}
-                />
-                <span className="auth-eye-btn" onClick={() => setShowPwd(p => !p)}>
-                  {showPwd ? '🙈' : '👁'}
-                </span>
-              </div>
-              {errors.password && <span className="form-error">{errors.password}</span>}
-            </div>
+          <ContinueBtn type="submit" loading={isSubmitting} fullWidth />
+        </form>
 
-            <div className="form-group">
-              <div className="auth-input-wrapper">
-                <input
-                  className={`form-input ${errors.confirm_password ? 'error' : ''}`}
-                  type={showConfirm ? 'text' : 'password'}
-                  placeholder="Confirm Password"
-                  value={form.confirm_password}
-                  onChange={set('confirm_password')}
-                />
-                <span className="auth-eye-btn" onClick={() => setShowConfirm(p => !p)}>
-                  {showConfirm ? '🙈' : '👁'}
-                </span>
-              </div>
-              {errors.confirm_password && <span className="form-error">{errors.confirm_password}</span>}
-            </div>
+        <div className="or-divider my-6">OR</div>
 
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Passwords must be at least 8 characters and contain at least one uppercase letter and one number
-            </p>
-
-            <label className="auth-terms">
-              <input
-                type="checkbox"
-                checked={form.agreed}
-                onChange={e => setForm(f => ({ ...f, agreed: e.target.checked }))}
-              />
-              <span>Agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></span>
-            </label>
-            {errors.agreed && <span className="form-error">{errors.agreed}</span>}
-
-            <button className="btn btn-primary auth-btn" type="submit" disabled={loading}>
-              {loading ? <span className="spinner" /> : 'Continue →'}
-            </button>
-
-            <div className="divider auth-divider">OR</div>
-
-            <button type="button" className="auth-social-btn">
-              <svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-              Sign up with Google
-            </button>
-
-            <button type="button" className="auth-social-btn">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-              Sign up with Apple
-            </button>
-          </form>
+        <div className="space-y-3">
+          <button className="social-btn">
+            <GoogleIcon /> Sign up with Google
+          </button>
+          <button className="social-btn">
+            <AppleIcon /> Sign up with Apple
+          </button>
         </div>
       </div>
-    </div>
+    </AuthSplitLayout>
   );
 };
 
-// ─── OTP Verification ─────────────────────────────────────────────
-const OTPVerification = ({ email, onSuccess }) => {
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+/* ─────────────────────────────────────────────────────────────────
+   Step 3 — Email confirmation
+   ───────────────────────────────────────────────────────────────── */
+const EmailConfirm = ({ email, onContinue }) => {
   const [resending, setResending] = useState(false);
-  const [resent, setResent] = useState(false);
-
-  const inputRefs = React.useRef([]);
-
-  const handleChange = (idx, val) => {
-    if (!/^\d?$/.test(val)) return;
-    const next = [...otp];
-    next[idx] = val;
-    setOtp(next);
-    if (val && idx < 5) inputRefs.current[idx + 1]?.focus();
-  };
-
-  const handleKeyDown = (idx, e) => {
-    if (e.key === 'Backspace' && !otp[idx] && idx > 0) {
-      inputRefs.current[idx - 1]?.focus();
-    }
-  };
-
-  const handlePaste = (e) => {
-    const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (text.length === 6) {
-      setOtp(text.split(''));
-      inputRefs.current[5]?.focus();
-    }
-  };
-
-  const handleSubmit = async () => {
-    const code = otp.join('');
-    if (code.length !== 6) { setError('Enter the complete 6-digit code'); return; }
-    setLoading(true);
-    setError('');
-    try {
-      const res = await authAPI.verifyOTP({ email, code });
-      const { access, refresh } = res.data.data;
-      localStorage.setItem('access_token', access);
-      localStorage.setItem('refresh_token', refresh);
-      onSuccess(res.data.data);
-    } catch (err) {
-      setError(err.response?.data?.errors?.code?.[0] || 'Invalid or expired code');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleResend = async () => {
     setResending(true);
     try {
       await authAPI.resendOTP({ email });
-      setResent(true);
-      setTimeout(() => setResent(false), 10000);
-    } catch {}
-    finally { setResending(false); }
+      toast.success('Email resent!');
+    } catch {
+      toast.error('Failed to resend email');
+    } finally {
+      setResending(false);
+    }
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-visual">
-        <div className="auth-visual-bg" />
-        <div className="auth-visual-content">
-          <div className="auth-visual-logo"><Logo white /></div>
-          <div className="auth-visual-tagline">Check Your<br /><span>Email</span></div>
-          <p className="auth-visual-sub">We sent a 6-digit verification code to confirm your email address.</p>
+    <div className="confirm-wrap">
+      <img
+        src="/assets/images/auth/email-bg.jpg"
+        alt=""
+        className="confirm-bg-img"
+        onError={e => {
+          e.currentTarget.parentElement.style.background = '#0D0D0D';
+          e.currentTarget.style.display = 'none';
+        }}
+      />
+      <div className="confirm-overlay" />
+
+      <div className="confirm-card">
+        <img
+          src="/assets/icons/interflow-logo.svg"
+          alt="Interflow"
+          style={{ height: 52, width: 'auto', margin: '0 auto 24px' }}
+        />
+
+        {/* Mail icon */}
+        <div
+          className="flex items-center justify-center rounded-full mx-auto mb-5"
+          style={{ width: 80, height: 80, border: '2px solid #1A1A1A' }}
+        >
+          <Mail size={32} strokeWidth={1.5} style={{ color: GOLD }} />
         </div>
-      </div>
-      <div className="auth-panel">
-        <div className="auth-form-wrapper" style={{ textAlign: 'center' }}>
-          <div className="auth-logo-mobile"><Logo /></div>
-          <div className="otp-mail-icon">✉️</div>
-          <h1 className="auth-title" style={{ textAlign: 'center' }}>You've Got a Mail!</h1>
-          <p className="auth-subtitle" style={{ textAlign: 'center' }}>
-            A confirmation email has been sent to <strong>{email}</strong>.
-            Enter the 6-digit code below.
-          </p>
 
-          <div className="otp-wrapper" onPaste={handlePaste}>
-            {otp.map((digit, i) => (
-              <input
-                key={i}
-                ref={el => inputRefs.current[i] = el}
-                className="otp-input-box"
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={e => handleChange(i, e.target.value)}
-                onKeyDown={e => handleKeyDown(i, e)}
-              />
-            ))}
-          </div>
+        <h2
+          className="font-bold text-[#1A1A1A] mb-3"
+          style={{ fontFamily: 'Montserrat, sans-serif', fontSize: 26 }}
+        >
+          You&apos;ve Got a Mail!
+        </h2>
+        <p className="text-[13.5px] text-[#777] leading-relaxed mb-7">
+          A confirmation mail has been sent to{' '}
+          <strong className="text-[#1A1A1A]">{email}</strong>{' '}
+          with instructions on confirmation and resetting of password.
+        </p>
 
-          {error && <p className="form-error" style={{ textAlign: 'center', marginTop: '8px' }}>{error}</p>}
+        <ContinueBtn fullWidth onClick={onContinue} />
 
+        <p className="mt-5 text-[13px] text-[#888]">
+          If you did not receive the email,{' '}
           <button
-            className="btn btn-primary auth-btn"
-            style={{ marginTop: '24px' }}
-            onClick={handleSubmit}
-            disabled={loading}
+            onClick={handleResend}
+            disabled={resending}
+            className="font-semibold hover:underline disabled:opacity-60"
+            style={{ color: GOLD }}
           >
-            {loading ? <span className="spinner" /> : 'Continue →'}
+            {resending ? 'Sending…' : 'resend another email'}
           </button>
-
-          <p className="otp-resend" style={{ marginTop: '20px' }}>
-            {resent ? '✅ Code resent!' : <>
-              If you did not receive the email,{' '}
-              <span onClick={handleResend}>{resending ? 'Resending...' : 'resend another email'}</span>
-            </>}
-          </p>
-        </div>
+        </p>
       </div>
     </div>
   );
 };
 
-// ─── Congratulations ──────────────────────────────────────────────
-const Congratulations = ({ onContinue }) => (
-  <div className="congrats-page">
-    <div className="congrats-bg" />
-    <div className="congrats-inner">
-      <div className="congrats-check">✓</div>
-      <h2 className="congrats-title">Your Account Has Been Created!</h2>
-      <p className="congrats-sub">
-        Congratulations! Your account is now set up and ready to go. To get the best experience, complete your profile so you can personalize your feed!
-      </p>
-      <button className="btn btn-primary btn-lg" onClick={onContinue}>
-        Setup Portfolio →
-      </button>
-    </div>
-  </div>
-);
-
-// ─── Main Register Page ───────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────
+   Main RegisterPage — orchestrates the 3 steps
+   ───────────────────────────────────────────────────────────────── */
 const RegisterPage = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [step, setStep] = useState('role');    // role → signup → otp → congrats
-  const [role, setRole] = useState(searchParams.get('role') || null);
+  const [step,  setStep]  = useState('role');   // 'role' | 'form' | 'confirm'
+  const [role,  setRole]  = useState(null);
   const [email, setEmail] = useState('');
-  const [userData, setUserData] = useState(null);
 
-  const handleRoleSelect = (r) => { setRole(r); setStep('signup'); };
-  const handleSignupSuccess = (em) => { setEmail(em); setStep('otp'); };
-  const handleOTPSuccess = (data) => { setUserData(data); setStep('congrats'); };
-  const handleContinue = () => {
-    if (userData?.role === 'artist') navigate('/onboarding/artist');
-    else navigate('/onboarding/organization');
-  };
-
-  // Auto-skip role if passed via URL
-  React.useEffect(() => {
-    if (role && step === 'role') setStep('signup');
-  }, []);
-
-  if (step === 'role') return <RoleSelect onSelect={handleRoleSelect} />;
-  if (step === 'signup') return <SignUpForm role={role} onSuccess={handleSignupSuccess} />;
-  if (step === 'otp') return <OTPVerification email={email} onSuccess={handleOTPSuccess} />;
-  if (step === 'congrats') return <Congratulations onContinue={handleContinue} />;
-  return null;
+  if (step === 'role') {
+    return <RolePicker onSelect={r => { setRole(r); setStep('form'); }} />;
+  }
+  if (step === 'form') {
+    return (
+      <RegisterForm
+        role={role}
+        onSuccess={mail => { setEmail(mail); setStep('confirm'); }}
+        onBack={() => setStep('role')}
+      />
+    );
+  }
+  return (
+    <EmailConfirm
+      email={email}
+      onContinue={() => navigate('/login')}
+    />
+  );
 };
 
 export default RegisterPage;

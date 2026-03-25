@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "interflow-frontend",
+      "runtimeExecutable": "/Users/richarduzor/.nvm/versions/node/v20.19.0/bin/node",
+      "runtimeArgs": ["/Users/richarduzor/Devs/ReactFrontendProjects/interflow-frontend/node_modules/.bin/vite"],
+      "port": 5173
+    }
+  ]
+}

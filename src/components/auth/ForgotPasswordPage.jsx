@@ -1,141 +1,108 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { authAPI } from '../../services/api';
+import { ArrowRight, ArrowLeft } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import toast from 'react-hot-toast';
+import AuthSplitLayout from '@/components/layout/AuthSplitLayout';
+import FloatingInput from '@/components/common/FloatingInput';
+import { useForgotPassword } from '@/hooks/auth';
 import './Auth.css';
 
-const Logo = ({ white = false }) => (
-  <svg width="120" height="36" viewBox="0 0 120 36" fill="none">
-    <path d="M8 6 C8 6 14 2 18 8 C22 14 16 20 20 24 C24 28 28 26 28 26" stroke="#8B6914" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-    <path d="M4 14 C4 14 10 10 14 16 C18 22 12 26 16 30" stroke="#A07C1E" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-    <text x="36" y="24" fontFamily="Cormorant Garamond,serif" fontSize="20" fontWeight="700" fill={white ? '#FFFFFF' : '#1A1A1A'}>Interflow</text>
-    <text x="36" y="34" fontFamily="DM Sans,sans-serif" fontSize="8" fontWeight="400" fill={white ? 'rgba(255,255,255,0.5)' : '#888'} letterSpacing="0.15em">ARTIST'S EXCHANGE</text>
-  </svg>
-);
+/* ─── Brand ─────────────────────────────────────────────────────── */
+const GOLD      = '#8D5D1D';
+const GOLD_DARK = '#7A4E16';
 
+/* ─────────────────────────────────────────────────────────────────
+   Forgot Password Page
+   ───────────────────────────────────────────────────────────────── */
 const ForgotPasswordPage = () => {
-  const [step, setStep] = useState('request'); // request → otp → reset → done
-  const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState(['','','','','','']);
-  const [form, setForm] = useState({ new_password: '', confirm_password: '' });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [showPwd, setShowPwd] = useState(false);
   const navigate = useNavigate();
-  const inputRefs = React.useRef([]);
+  const { mutateAsync: forgotPassword } = useForgotPassword();
+  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm();
 
-  const handleRequest = async (e) => {
-    e.preventDefault();
-    if (!email) { setError('Email is required'); return; }
-    setLoading(true);
+  const email = watch('email', '');
+
+  const onSubmit = async (data) => {
     try {
-      await authAPI.requestPasswordReset({ email });
-      setStep('otp');
-      setError('');
-    } catch { setError('Something went wrong. Please try again.'); }
-    finally { setLoading(false); }
-  };
-
-  const handleOTPChange = (idx, val) => {
-    if (!/^\d?$/.test(val)) return;
-    const next = [...otp]; next[idx] = val; setOtp(next);
-    if (val && idx < 5) inputRefs.current[idx+1]?.focus();
-  };
-
-  const handleReset = async (e) => {
-    e.preventDefault();
-    if (form.new_password !== form.confirm_password) { setError('Passwords do not match'); return; }
-    setLoading(true);
-    try {
-      await authAPI.confirmPasswordReset({ email, code: otp.join(''), ...form });
-      setStep('done');
+      await forgotPassword({ email: data.email });
+      navigate('/forgot-password/sent', { state: { email: data.email } });
     } catch (err) {
-      setError(err.response?.data?.message || 'Reset failed. Check your code.');
-    } finally { setLoading(false); }
+      toast.error(err?.response?.data?.message || 'Something went wrong. Please try again.');
+    }
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-visual">
-        <div className="auth-visual-bg" />
-        <div className="auth-visual-content">
-          <div className="auth-visual-logo"><Logo white /></div>
-          <div className="auth-visual-tagline">Reset Your<br /><span>Password</span></div>
-          <p className="auth-visual-sub">We'll help you get back into your account securely.</p>
-        </div>
+    <AuthSplitLayout
+      imageSrc="/assets/images/auth/login-bg.jpg"
+      imageAlt="Artist"
+      leftWidth="52"
+    >
+      <div className="w-full max-w-[420px]">
+
+        {/* Back link */}
+        <Link
+          to="/login"
+          className="inline-flex items-center gap-1.5 text-[13px] text-[#999] hover:text-[#555] mb-8 transition-colors"
+        >
+          <ArrowLeft size={14} />
+          Back to Sign In
+        </Link>
+
+        {/* Heading */}
+        <h1
+          className="font-bold text-[#1A1A1A] mb-2"
+          style={{ fontFamily: 'Montserrat, sans-serif', fontSize: 'clamp(26px, 5vw, 34px)' }}
+        >
+          Forgot Password
+        </h1>
+
+        {/* Sub-line */}
+        <p className="text-[14px] text-[#888] mb-8">
+          Enter your email and we'll send you a reset link.
+        </p>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <FloatingInput
+            label="Email"
+            type="email"
+            value={email}
+            error={errors.email?.message}
+            {...register('email', { required: 'Email is required' })}
+          />
+
+          {/* Send button */}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full flex items-center justify-center gap-3 font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-60"
+            style={{
+              background: GOLD,
+              color: '#fff',
+              borderRadius: 9999,
+              height: 52,
+              paddingLeft: 28,
+              paddingRight: 14,
+              fontSize: 15,
+              fontFamily: 'Montserrat, sans-serif',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = GOLD_DARK}
+            onMouseLeave={e => e.currentTarget.style.background = GOLD}
+          >
+            {isSubmitting ? 'Sending…' : 'Send Reset Link'}
+            {!isSubmitting && (
+              <span
+                className="flex items-center justify-center rounded-full shrink-0"
+                style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.22)' }}
+              >
+                <ArrowRight size={16} color="#fff" />
+              </span>
+            )}
+          </button>
+        </form>
+
       </div>
-      <div className="auth-panel">
-        <div className="auth-form-wrapper">
-          <div className="auth-logo-mobile"><Logo /></div>
-
-          {step === 'request' && (
-            <>
-              <h1 className="auth-title">Forgot Password?</h1>
-              <p className="auth-subtitle">Enter your email and we'll send you a reset code. <Link to="/login">Back to login</Link></p>
-              <form className="auth-form" onSubmit={handleRequest}>
-                <div className="form-group">
-                  <input className="form-input" type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} />
-                  {error && <span className="form-error">{error}</span>}
-                </div>
-                <button className="btn btn-primary auth-btn" type="submit" disabled={loading}>
-                  {loading ? <span className="spinner" /> : 'Send Reset Code →'}
-                </button>
-              </form>
-            </>
-          )}
-
-          {step === 'otp' && (
-            <>
-              <div className="otp-mail-icon">✉️</div>
-              <h1 className="auth-title" style={{ textAlign: 'center' }}>Check Your Email</h1>
-              <p className="auth-subtitle" style={{ textAlign: 'center' }}>Enter the 6-digit code sent to <strong>{email}</strong></p>
-              <div className="otp-wrapper">
-                {otp.map((d,i) => (
-                  <input key={i} ref={el => inputRefs.current[i]=el} className="otp-input-box" type="text" inputMode="numeric" maxLength={1} value={d}
-                    onChange={e => handleOTPChange(i, e.target.value)}
-                    onKeyDown={e => { if(e.key==='Backspace' && !d && i>0) inputRefs.current[i-1]?.focus(); }}
-                  />
-                ))}
-              </div>
-              {error && <p className="form-error" style={{ textAlign: 'center', marginTop: '8px' }}>{error}</p>}
-              <button className="btn btn-primary auth-btn" style={{ marginTop: '24px' }} onClick={() => setStep('reset')}>
-                Continue →
-              </button>
-            </>
-          )}
-
-          {step === 'reset' && (
-            <>
-              <h1 className="auth-title">New Password</h1>
-              <p className="auth-subtitle">Choose a strong new password for your account</p>
-              <form className="auth-form" onSubmit={handleReset}>
-                <div className="form-group">
-                  <div className="auth-input-wrapper">
-                    <input className="form-input" type={showPwd ? 'text' : 'password'} placeholder="New password" value={form.new_password} onChange={e => setForm(f=>({...f,new_password:e.target.value}))} />
-                    <span className="auth-eye-btn" onClick={() => setShowPwd(p=>!p)}>{showPwd ? '🙈' : '👁'}</span>
-                  </div>
-                </div>
-                <div className="form-group">
-                  <input className="form-input" type="password" placeholder="Confirm new password" value={form.confirm_password} onChange={e => setForm(f=>({...f,confirm_password:e.target.value}))} />
-                </div>
-                {error && <span className="form-error">{error}</span>}
-                <button className="btn btn-primary auth-btn" type="submit" disabled={loading}>
-                  {loading ? <span className="spinner" /> : 'Reset Password →'}
-                </button>
-              </form>
-            </>
-          )}
-
-          {step === 'done' && (
-            <div style={{ textAlign: 'center' }}>
-              <div className="congrats-check" style={{ margin: '0 auto 24px', width: '64px', height: '64px', fontSize: '28px' }}>✓</div>
-              <h1 className="auth-title">Password Reset!</h1>
-              <p className="auth-subtitle">Your password has been reset successfully. You can now sign in with your new password.</p>
-              <button className="btn btn-primary auth-btn" onClick={() => navigate('/login')}>Sign In →</button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    </AuthSplitLayout>
   );
 };
 

@@ -1,6 +1,7 @@
 import axios from 'axios';
+import tokens from '@/utils/tokens';
 
-const BASE_URL = process.env.REACT_APP_API_URL || '/api/v1';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -9,7 +10,7 @@ const api = axios.create({
 
 // ─── Request interceptor — attach access token ────────────────────
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
+  const token = tokens.getAccess();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -22,16 +23,15 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
       try {
-        const refresh = localStorage.getItem('refresh_token');
+        const refresh = tokens.getRefresh();
         if (!refresh) throw new Error('No refresh token');
         const res = await axios.post(`${BASE_URL}/auth/token/refresh/`, { refresh });
         const newAccess = res.data.access;
-        localStorage.setItem('access_token', newAccess);
+        tokens.set(newAccess, null); // keep existing refresh, only update access
         original.headers.Authorization = `Bearer ${newAccess}`;
         return api(original);
       } catch {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+        tokens.clear();
         window.location.href = '/login';
       }
     }

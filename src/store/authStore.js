@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { authAPI } from '../services/api';
+import { authAPI } from '@/services/index';
+import tokens from '@/utils/tokens';
 
 const useAuthStore = create(
   persist(
@@ -11,21 +12,24 @@ const useAuthStore = create(
       isAuthenticated: false,
       isLoading: false,
 
+      /** Store tokens in both Zustand and localStorage */
       setTokens: (access, refresh) => {
-        localStorage.setItem('access_token', access);
-        localStorage.setItem('refresh_token', refresh);
+        tokens.set(access, refresh);
         set({ accessToken: access, refreshToken: refresh, isAuthenticated: true });
       },
 
       setUser: (user) => set({ user }),
 
+      /**
+       * Login action — used directly by LoginPage (non-React-Query path).
+       * Returns { success, role, is_onboarded } so the caller can navigate.
+       */
       login: async (credentials) => {
         set({ isLoading: true });
         try {
           const res = await authAPI.login(credentials);
           const { access, refresh, role, is_onboarded } = res.data.data;
-          localStorage.setItem('access_token', access);
-          localStorage.setItem('refresh_token', refresh);
+          tokens.set(access, refresh);
           set({
             accessToken: access,
             refreshToken: refresh,
@@ -42,11 +46,10 @@ const useAuthStore = create(
 
       logout: async () => {
         try {
-          const refresh = localStorage.getItem('refresh_token');
+          const refresh = tokens.getRefresh();
           if (refresh) await authAPI.logout({ refresh });
         } catch {}
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+        tokens.clear();
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
       },
 
